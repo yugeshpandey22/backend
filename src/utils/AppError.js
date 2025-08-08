@@ -1,16 +1,16 @@
 class ApiError extends Error {
   constructor(
     statusCode,
-    message = "something went wrong",  // typo fixed
-    errors = [],                       // comma missing, added
+    message = "something went wrong",
+    errors = [],
     stack = ""
   ) {
-    super(message);                    // 'message' spelling fixed
-    this.statusCode = statusCode;     // camelCase consistency
+    super(message);
+    this.statusCode = statusCode;
     this.data = null;
-    this.message = message;            // spelling fixed and matched
+    this.message = message;
     this.success = false;
-    this.errors = errors;              // this.errors = this.errors  -> wrong, fixed
+    this.errors = errors;
 
     if (stack) {
       this.stack = stack;
@@ -20,5 +20,4 @@ class ApiError extends Error {
   }
 }
 
-
-export{ApiError}
+ module.export = { ApiError };
