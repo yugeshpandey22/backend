@@ -1,6 +1,6 @@
 const { ApiError } = require("../utils/AppError");
 const { ApiResponse } = require("../utils/ApiResponse");
-const { User } = require("../models/user.models");
+const  User  = require("../models/user.models");
 const { uploadeOnCloundinary } = require("../utils/fileUplode");
 
 // ========================= REGISTER USER =========================

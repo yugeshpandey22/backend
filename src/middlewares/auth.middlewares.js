@@ -1,16 +1,14 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/user.model");
+const User = require("../models/user.models.js");
 
 const verifyJWT = async (req, res, next) => {
     try {
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
-        
         if (!token) {
             return res.status(401).json({ success: false, message: "Unauthorized request" });
         }
 
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
         req.user = await User.findById(decoded._id).select("-password -refreshToken");
 
         if (!req.user) {
