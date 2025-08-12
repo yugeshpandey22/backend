@@ -1,7 +1,8 @@
 const { ApiError } = require("../utils/AppError");
 const { ApiResponse } = require("../utils/ApiResponse");
-const  User  = require("../models/user.models");
+const User = require("../models/user.models");      // filename fix
 const { uploadeOnCloundinary } = require("../utils/fileUplode");
+const jwt = require("jsonwebtoken");
 
 // ========================= REGISTER USER =========================
 const registerUser = async (req, res) => {
@@ -86,13 +87,17 @@ const loginUser = async (req, res) => {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: true,
-            sameSite: "strict"
+            secure: false,         // development ke liye false, production me true karna
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         };
 
         res
             .status(200)
-            .cookie("accessToken", accessToken, cookieOptions)
+            .cookie("accessToken", accessToken, {
+                ...cookieOptions,
+                maxAge: 15 * 60 * 1000 // 15 minutes
+            })
             .cookie("refreshToken", refreshToken, cookieOptions)
             .json(
                 new ApiResponse(200, {
@@ -118,8 +123,8 @@ const logoutUser = async (req, res) => {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: true,
-            sameSite: "strict"
+            secure: false,      // development ke liye false
+            sameSite: "lax"
         };
 
         res
@@ -137,4 +142,44 @@ const logoutUser = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, logoutUser };
+// ========================= REFRESH TOKEN =========================
+const refreshToken = async (req, res) => {
+    try {
+        const incomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+        if (!incomingRefreshToken) {
+            throw new ApiError(401, "Unauthorized request - no refresh token");
+        }
+
+        // Verify the refresh token
+        const decoded = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+        // Find user and check refresh token matches
+        const user = await User.findById(decoded._id);
+        if (!user || user.refreshToken !== incomingRefreshToken) {
+            throw new ApiError(403, "Forbidden - Invalid refresh token");
+        }
+
+        // Generate new access token
+        const newAccessToken = user.generateAccessToken();
+
+        // Send new access token in cookie
+        const cookieOptions = {
+            httpOnly: true,
+            secure: false,       // development ke liye false
+            sameSite: "lax",
+            maxAge: 15 * 60 * 1000  // 15 minutes
+        };
+
+        res.cookie("accessToken", newAccessToken, cookieOptions);
+        res.json(new ApiResponse(200, { accessToken: newAccessToken }, "Access token refreshed successfully"));
+
+    } catch (error) {
+        console.error("Refresh Token Error:", error);
+        res.status(error.statusCode || 401).json({
+            success: false,
+            message: error.message || "Invalid or expired refresh token"
+        });
+    }
+};
+
+module.exports = { registerUser, loginUser, logoutUser, refreshToken };
