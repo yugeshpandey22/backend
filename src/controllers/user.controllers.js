@@ -5,6 +5,9 @@ const User = require("../models/user.models");
 const { uploadeOnCloundinary } = require("../utils/fileUplode");
 const jwt = require("jsonwebtoken");
 
+const Video = require("../models/video.models"); // <- ensure correct path
+
+
 // ========================= REGISTER USER =========================
 const registerUser = asyncHandler(async (req, res) => {
     const { fullName, email, username, password } = req.body;
@@ -244,6 +247,138 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, user, "Cover image updated successfully"));
 });
 
+const getUserChannelProfile = async (req, res) => {
+    try {
+        const { channelId } = req.params; // jis channel ka profile chahiye
+        const currentUserId = req.user?._id; // login user ka id
+
+        const channelData = await User.aggregate([
+            {
+                $match: { _id: new mongoose.Types.ObjectId(channelId) }
+            },
+            // Subscribers count
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "subscribers"
+                }
+            },
+            // SubscribedTo count
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "subscriber",
+                    as: "subscribedTo"
+                }
+            },
+            // Add extra fields
+            {
+                $addFields: {
+                    subscribersCount: { $size: "$subscribers" },
+                    subscribedToCount: { $size: "$subscribedTo" },
+                    isSubscribed: {
+                        $cond: {
+                            if: {
+                                $in: [
+                                    new mongoose.Types.ObjectId(currentUserId),
+                                    "$subscribers.subscriber"
+                                ]
+                            },
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            // Sirf required fields return karo
+            {
+                $project: {
+                    fullName: 1,
+                    username: 1,
+                    email: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                    subscribersCount: 1,
+                    subscribedToCount: 1,
+                    isSubscribed: 1
+                }
+            }
+        ]);
+
+        if (!channelData.length) {
+            return res.status(404).json({ success: false, message: "Channel not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: channelData[0]
+        });
+
+    } catch (error) {
+        console.error("getUserChannelProfile Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const result = await User.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+
+    // Lookup videos in watchHistory
+    {
+      $lookup: {
+        from: "videos",
+        let: { videoIds: "$watchHistory" },
+        pipeline: [
+          { $match: { $expr: { $in: ["$_id", "$$videoIds"] } } },
+
+          // Preserve original order
+          { $addFields: { order: { $indexOfArray: ["$$videoIds", "$_id"] } } },
+          { $sort: { order: -1 } },
+
+          // Populate owner info
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                { $project: { fullName: 1, username: 1, avatar: 1 } }
+              ]
+            }
+          },
+          { $addFields: { owner: { $first: "$owner" } } },
+
+          // Return only required fields
+          {
+            $project: {
+              title: 1,
+              thumbnail: 1,
+              duration: 1,
+              views: 1,
+              createdAt: 1,
+              owner: 1
+            }
+          }
+        ],
+        as: "watchHistory"
+      }
+    },
+
+    { $project: { watchHistory: 1, _id: 0 } }
+  ]);
+
+  const history = result?.[0]?.watchHistory || [];
+  return res.status(200).json(new ApiResponse(200, history, "Watch history fetched successfully"));
+});
 
 
 
@@ -257,6 +392,11 @@ module.exports = {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-   updateUserCoverImage
+   updateUserCoverImage,
+   getUserChannelProfile,
+   getWatchHistory
+ 
+
+
 };
 

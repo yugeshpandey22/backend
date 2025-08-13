@@ -9,7 +9,8 @@ const {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
-  updateUserCoverImage
+  updateUserCoverImage,
+  getWatchHistory // <-- add this
 } = require("../controllers/user.controllers.js");
 
 const { upload } = require("../middlewares/multer.middlerware.js");
@@ -47,5 +48,8 @@ router.patch(
   upload.single("coverImage"),
   updateUserCoverImage
 );
+
+// ================== WATCH HISTORY ROUTE ==================
+router.get("/watch-history", verifyJWT, getWatchHistory); // <-- added
 
 module.exports = router;
