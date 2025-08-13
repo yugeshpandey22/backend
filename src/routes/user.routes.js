@@ -10,7 +10,8 @@ const {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
-  getWatchHistory // <-- add this
+  getWatchHistory, // <-- add this
+  getUserChannelProfile
 } = require("../controllers/user.controllers.js");
 
 const { upload } = require("../middlewares/multer.middlerware.js");
@@ -48,6 +49,7 @@ router.patch(
   upload.single("coverImage"),
   updateUserCoverImage
 );
+router.route("/c/username").get(verifyJWT,getUserChannelProfile)
 
 // ================== WATCH HISTORY ROUTE ==================
 router.get("/watch-history", verifyJWT, getWatchHistory); // <-- added
