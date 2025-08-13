@@ -162,11 +162,101 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
 
+
+// ========================= GET CURRENT USER =========================
+const getCurrentUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user?._id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Current user fetched successfully"));
+});
+
+// ========================= UPDATE ACCOUNT DETAILS =========================
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { fullName, email } = req.body;
+
+    if (!fullName && !email) {
+        throw new ApiError(400, "At least one field (fullName or email) is required");
+    }
+
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    if (fullName) user.fullName = fullName;
+    if (email) user.email = email;
+
+    await user.save({ validateBeforeSave: false });
+
+    const updatedUser = await User.findById(user._id).select("-password -refreshToken");
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updatedUser, "Account details updated successfully"));
+});
+
+// ========================= UPDATE USER AVATAR =========================
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path;
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is required");
+    }
+
+    const avatar = await uploadeOnCloundinary(avatarLocalPath);
+    if (!avatar) {
+        throw new ApiError(400, "Error uploading avatar file");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        { avatar: avatar.url },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Avatar updated successfully"));
+});
+
+// ========================= UPDATE USER COVER IMAGE =========================
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = req.file?.path;
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "Cover image file is required");
+    }
+
+    const coverImage = await uploadeOnCloundinary(coverImageLocalPath);
+    if (!coverImage) {
+        throw new ApiError(400, "Error uploading cover image file");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        { coverImage: coverImage.url },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Cover image updated successfully"));
+});
+
+
+
+
 // ========================= EXPORTS =========================
 module.exports = {
     registerUser,
     loginUser,
     logoutUser,
     refreshToken,
-    changeCurrentPassword
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+   updateUserCoverImage
 };
+

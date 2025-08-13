@@ -1,10 +1,21 @@
 const express = require("express");
 const router = express.Router();
 
-const { registerUser, loginUser, logoutUser, refreshToken } = require("../controllers/user.controllers.js");
+const {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshToken,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage
+} = require("../controllers/user.controllers.js");
+
 const { upload } = require("../middlewares/multer.middlerware.js");
 const { verifyJWT } = require("../middlewares/auth.middlewares.js");
 
+// ================== AUTH ROUTES ==================
 router.post(
   "/register",
   upload.fields([
@@ -16,6 +27,25 @@ router.post(
 
 router.post("/login", loginUser);
 router.post("/logout", verifyJWT, logoutUser);
-router.post("/refresh-token",refreshToken);
+router.post("/refresh-token", refreshToken);
+
+// ================== USER ROUTES ==================
+router.get("/current-user", verifyJWT, getCurrentUser);
+
+router.patch("/update-account", verifyJWT, updateAccountDetails);
+
+router.patch(
+  "/update-avatar",
+  verifyJWT,
+  upload.single("avatar"),
+  updateUserAvatar
+);
+
+router.patch(
+  "/update-cover-image",
+  verifyJWT,
+  upload.single("coverImage"),
+  updateUserCoverImage
+);
 
 module.exports = router;
