@@ -367,7 +367,33 @@ const getWatchHistory = asyncHandler(async (req, res) => {
               createdAt: 1,
               owner: 1
             }
+          },
+
+// ✅ Add Likes/Dislikes and Saved
+        {
+          $addFields: {
+            isLiked: { $in: [new mongoose.Types.ObjectId(userId), "$likes"] },
+            isDisliked: { $in: [new mongoose.Types.ObjectId(userId), "$dislikes"] },
+            isSaved: { $in: [new mongoose.Types.ObjectId(userId), "$savedBy"] }
           }
+        },
+
+        // Final projection for FE
+        {
+          $project: {
+            title: 1,
+            thumbnail: 1,
+            duration: 1,
+            views: 1,
+            createdAt: 1,
+            owner: 1,
+            isLiked: 1,
+            isDisliked: 1,
+            isSaved: 1
+          }
+        }
+    
+
         ],
         as: "watchHistory"
       }
